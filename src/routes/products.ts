@@ -5,7 +5,7 @@ const router = express();
 
 router.get('/', async( req: Request, res: Response ) => {
     try {
-        res.json( await prisma.products.findMany() );
+        res.status(200).json( await prisma.products.findMany() );
     } catch (error) {
         console.error("Error fetching products:", error);
         res.status(500).json({ error: "Internal server error." });
@@ -29,12 +29,14 @@ router.post('/', async( req: Request, res: Response ) => {
     try {
         const { name, category, price, stock } = req.body;
         if ( !name || !price || !category || !stock )
-            return res.status( 404 ).json( { error: "name, category, price, and stock are required."});
-        const newProduct = await prisma.products.create( { data: {
+            return res.status( 400 ).json( { error: "name, category, price, and stock are required."});
+        if ( !isFinite(price) || !isFinite(stock) )
+            return res.status( 400 ).json( { error: "Price and stock must be valid numbers."});
+        await prisma.products.create( { data: {
             name, category, price: +price, stock: +stock
         } });
 
-        res.status( 201 ).json( newProduct );
+        res.sendStatus( 201 );
     } catch (error) {
         console.log("Error adding proudct:", error);
         res.status( 500 ).json({ error: "Internal server error."} );
@@ -48,6 +50,10 @@ router.put('/:id', async( req: Request, res: Response ) => {
 
         if (!name && !category && !price && !stock)
             return res.status( 400 ).json({ error: "At least one field (name, category, price, or stock) is required for an update." });
+
+        if ( !isFinite(price) || !isFinite(stock) )
+            return res.status( 400 ).json( { error: "Price and stock must be valid numbers."});
+
         const foundProduct = await prisma.products.findUnique( { where : { id } });
 
         if ( !foundProduct ) 
